@@ -16,7 +16,7 @@ interface ImageResponse{
     data:any | null;
 }
 
-export async function generateImage(input: z.infer<typeof ImageGenerationFormSchema>): Promise<ImageResponse> {
+export async function generateImageAction(input: z.infer<typeof ImageGenerationFormSchema>): Promise<ImageResponse> {
     const modelInput = {
       prompt: input.prompt,
       go_fast: true,
