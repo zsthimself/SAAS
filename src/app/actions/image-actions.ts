@@ -3,6 +3,11 @@
 import { z } from "zod";
 import { ImageGenerationFormSchema } from "@/components/image-generation/configurations";
 import Replicate from "replicate";
+import { Database } from "@datatypes.types";
+import { createClient } from "@/lib/supabase/server";
+import { imageMeta } from "image-meta";
+import { randomUUID } from "crypto";
+import { error } from "console";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -46,4 +51,102 @@ return{
 }
 }
 }
+
+export async function imgUrlToBlob(url:string) {
+  const response =fetch(url);
+  const blob = (await response).blob();
+  return (await blob).arrayBuffer();
+}
+
+type storeImageInput={url:string}&Database["public"]["Tables"]["generated_images"]["Insert"]
+
+
+  export async function storeImages(data:storeImageInput[]){
+    const supabase = await createClient()
+
+    const {data:{user}}=await supabase.auth.getUser()
+    if(!user){
+      return{
+        error:'Unauthorized',
+        success:false,
+        data:null,
+      }
+    }
   
+    const uploadResults =[];
+    for(const img of data){
+      const arrayBuffer = await imgUrlToBlob(img.url);
+      const {width,height,type}=imageMeta(new Uint8Array(arrayBuffer));
+
+      const fileName=`image_${randomUUID()}.${type}`
+      const filePath = `${user.id}/${fileName}`
+
+      const {error:storageError}=await supabase.storage.from('generated_images').upload(
+        filePath,arrayBuffer,{
+          contentType:'image/${type}',//image/png or image/jp
+          cacheControl:'3600',
+          upsert:false,
+        }
+      )
+
+const {error:dbError,data:dbDate}=await supabase.from('generated_images').insert([{
+  user_id:user.id,
+  model:img.model,
+  prompt:img.prompt,
+  aspect_ratio:img.aspect_ratio,
+  guidance:img.guidance,
+  num_inference_steps:img.num_inference_steps,
+  output_format:img.output_format,
+  image_name:fileName,
+  width,
+  height
+}]).select()
+if(dbError){
+  uploadResults.push({
+    fileName,
+    error:dbError.message,
+    success:!dbError,
+    data:dbDate||null,
+  })
+}
+
+    }
+    console.log('UploadRusults:',uploadResults);
+    return{
+      error:null,
+      success:true,
+      data:{results:uploadResults}
+    }
+  }
+
+  export async function getImages(limit?:number){
+    const supabase = await createClient()
+
+    const {data:{user}}=await supabase.auth.getUser()
+    if(!user){
+      return{
+        error:'Unauthorized',
+        success:false,
+        data:null,
+      }
+    }
+  
+    let query = supabase.from("generated_images").select("*").eq("user_id",user.id).order("created_at",{ascending:false})
+   
+    if(limit){
+      query=query.limit(limit)
+    }
+    const {data,error}=await query;
+    if(error){
+      return{
+error:error.message||"Failed to fetch images!",
+success:false,
+data:null
+}
+      }
+    return{
+      error:null,
+      success:true,
+      data:{results:uploadResults}
+    }
+  }
