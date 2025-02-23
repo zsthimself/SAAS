@@ -1,7 +1,16 @@
+import { Tables } from "@datatypes.types";
 import React from "react";
+type ImageProps = {
+  url: string | undefined;
+} & Tables<"generated_images">;
 
-const GalleryComponent = () => {
-  return <div></div>;
+interface GalleryProps {
+  images: ImageProps[];
+}
+
+const GalleryComponent = ({ images }: GalleryProps) => {
+  console.log(images);
+  return <div>Gallery Component</div>;
 };
 
 export default GalleryComponent;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server'
 import { z } from "zod";
@@ -137,16 +138,30 @@ if(dbError){
       query=query.limit(limit)
     }
     const {data,error}=await query;
+
     if(error){
       return{
 error:error.message||"Failed to fetch images!",
 success:false,
 data:null
 }
-      }
+    }
+    const imageWithUrls = await Promise.all(
+      data.map(async(image:Database["public"]["Tables"]["generated_images"]["Row"])=>{
+        const {data,error}=await supabase.storage
+        .from('generated_images')
+        .createSignedUrl('${user.id}/${image.image_name}',3600)
+        return{
+          ...image,
+          url:data?.signedUrl
+        }
+      })
+    )
+   
+
     return{
       error:null,
       success:true,
-      data:{results:uploadResults}
+      data:imageWithUrls || null
     }
   }
