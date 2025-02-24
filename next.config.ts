@@ -18,8 +18,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ['replicate.delivery'],
-  },
+    remotePatterns: [
+      {protocol: 'https',
+        hostname: 'replicate.delivery',
+      },
+      {
+        protocol: 'https',
+        hostname:"oybmzfurahdlmffbgzvs.supabase.co"
+      }
+    ]
+  }
 };
 
 export default nextConfig;

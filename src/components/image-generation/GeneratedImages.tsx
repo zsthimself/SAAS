@@ -28,6 +28,7 @@ import useGeneratedStore from "@/store/useGeneratedStore";
 // ];
 const GeneratedImages = () => {
   const images = useGeneratedStore((state) => state.images);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const loadings = useGeneratedStore((state) => state.images);
   console.log(images);
 
