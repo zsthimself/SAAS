@@ -30,4 +30,13 @@ const nextConfig: NextConfig = {
   }
 };
 
+// next.config.js
+module.exports = {
+  i18n: {
+    locales: ['en-US'], // 强制使用英语
+    defaultLocale: 'en-US',
+  },
+};
+
+
 export default nextConfig;
