@@ -15,7 +15,33 @@ export async function getPresignedStorageUrl(filePath: string){
     }
      }
 
+export async function fetchModels(){
+    const supabase = await createClient()
+    const {data:{user}}= await supabase.auth.getUser()
+
+    const {data,error,count}=await supabase.from("models").select("*",{count:"exact"}).eq('user_id',user?.id).order('created_at',{ascending:false})
+
+return{
+    error:error?.message || null,
+    success: !error,
+    data:data ||null,
+    count:count || 0,
+}
+}
 
 
+ export async function deleteModel(id:number,model_id:string,model_version:string) {
+    const supabase =await createClient()
+    if(model_version){
+        try{
+const res =await fetch(`https://api.replicate.com/v1/models/{zsthimself}/${model_id}/versions/${model_version}`,{
+    method:'DELETE',
+    headers:{
+        'Authorization':`Bearer ${process.env.REPLICATE_API_TOKEN}` 
+    }
+})
+        }catch(error){
 
-   
+        }
+    }
+ }  
