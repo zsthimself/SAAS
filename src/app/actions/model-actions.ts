@@ -1,47 +1,98 @@
-"use server"
+"use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { error } from "console";
 
+export async function getPresignedStorageUrl(filePath: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-export async function getPresignedStorageUrl(filePath: string){
+  const { data: urlData, error } = await supabaseAdmin.storage
+    .from("training_data")
+    .createSignedUploadUrl(`${user?.id}/${new Date().getTime()}_${filePath}`);
+  return {
+    signedUrl: urlData?.signedUrl || "",
+    error: error?.message || null,
+  };
+}
 
-    const  supabase  = await createClient()
-    const {data:{user}}= await supabase.auth.getUser()
+export async function fetchModels() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    const {data:urlData,error}=await supabaseAdmin.storage.from('training_data').createSignedUploadUrl(`${user?.id}/${new Date().getTime()}_${filePath}`);
-     return{
-        signedUrl:urlData?.signedUrl||"",
-        error:error?.message||null
-    }
-     }
+  const { data, error, count } = await supabase
+    .from("models")
+    .select("*", { count: "exact" })
+    .eq("user_id", user?.id)
+    .order("created_at", { ascending: false });
 
-export async function fetchModels(){
-    const supabase = await createClient()
-    const {data:{user}}= await supabase.auth.getUser()
-
-    const {data,error,count}=await supabase.from("models").select("*",{count:"exact"}).eq('user_id',user?.id).order('created_at',{ascending:false})
-
-return{
-    error:error?.message || null,
+  return {
+    error: error?.message || null,
     success: !error,
-    data:data ||null,
-    count:count || 0,
+    data: data || null,
+    count: count || 0,
+  };
 }
-}
 
-
- export async function deleteModel(id:number,model_id:string,model_version:string) {
-    const supabase =await createClient()
-    if(model_version){
-        try{
-const res =await fetch(`https://api.replicate.com/v1/models/{zsthimself}/${model_id}/versions/${model_version}`,{
-    method:'DELETE',
-    headers:{
-        'Authorization':`Bearer ${process.env.REPLICATE_API_TOKEN}` 
-    }
-})
-        }catch(error){
-
+export async function deleteModel(
+  id: number,
+  model_id: string,
+  model_version: string
+) {
+  const supabase = await createClient();
+  if (model_version) {
+    try {
+      const res = await fetch(
+        `https://api.replicate.com/v1/models/{zsthimself}/${model_id}/versions/${model_version}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
+          },
         }
+      );
+      if (!res.ok) {
+        throw new Error("Failed to delete model version from Replicate");
+      }
+    } catch (e) {
+      console.error("Failed to delete model version from Replicate:", e);
+      return {
+        error: "Failed to delete model version from Replicate",
+        success: false,
+      };
     }
- }  
+  }
+
+  if (model_id) {
+    try {
+      const res = await fetch(
+        `https://api.replicate.com/v1/models/{zsthimself}/${model_id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
+          },
+        }
+      );
+      if (!res.ok) {
+        throw new Error("Failed to delete model  from Replicate");
+      }
+    } catch (e) {
+      console.error("Failed to delete model  from Replicate:", e);
+      return {
+        error: "Failed to delete model  from Replicate",
+        success: false,
+      };
+    }
+  }
+
+  const { error } = await supabase.from("models").delete().eq("id", id);
+  return {
+    error: error?.message || "Failed to delete model  from Replicate",
+    success: !error,
+  };
+}

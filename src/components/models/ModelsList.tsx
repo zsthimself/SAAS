@@ -1,4 +1,5 @@
-import React from "react";
+"use clinet";
+import React, { useId } from "react";
 import { Database } from "@datatypes.types";
 import {
   Card,
@@ -11,6 +12,7 @@ import Link from "next/link";
 import { Button } from "../ui/button";
 import { formatDistance } from "date-fns";
 import {
+  ArrowRight,
   CheckCircle2,
   Clock,
   Loader2,
@@ -29,6 +31,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { deleteModel } from "@/app/actions/model-actions";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type ModelType = {
   error: string | null;
@@ -42,6 +47,23 @@ interface ModelsListProps {
 
 const ModelsList = (models: ModelsListProps) => {
   const { data, success, error } = models;
+
+  const toastId = useId();
+  const handleDeletedModel = async (
+    id: number,
+    model_id: string,
+    model_version: string
+  ) => {
+    toast.loading("Deleting model....", { id: toastId });
+    const { success, error } = await deleteModel(id, model_id, model_version);
+    if (error) {
+      toast.error(error, { id: toastId });
+    }
+    if (success) {
+      toast.success("Model deleted successfully!", { id: toastId });
+    }
+  };
+
   if (data?.length === 0) {
     return (
       <Card className="flex h-[450px] flex-col items-center justify-center text-center">
@@ -107,7 +129,18 @@ const ModelsList = (models: ModelsListProps) => {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction>Continue</AlertDialogAction>
+                      <AlertDialogAction
+                        onClick={() =>
+                          handleDeletedModel(
+                            model.id,
+                            model.model_id || "",
+                            model.version || ""
+                          )
+                        }
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -142,6 +175,28 @@ const ModelsList = (models: ModelsListProps) => {
                 </div>
               </div>
             </CardContent>
+            <div className=" pt-4">
+              <Link
+                href={
+                  model.training_status === "succeeded"
+                    ? `/image-gengeration?model_id=${model.model_id}:${model.version}`
+                    : "#"
+                }
+                className={cn(
+                  "inline-flex w-full group",
+                  model.training_status !== "succeeded" &&
+                    "pointer-events-none opacity-50"
+                )}
+              >
+                <Button
+                  className="w-full group-hover:bg-primary/90"
+                  disabled={model.training_status !== "succeeded"}
+                >
+                  Generate Images
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
         </Card>
       ))}
